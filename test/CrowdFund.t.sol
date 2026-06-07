@@ -25,7 +25,7 @@ contract CrowdFundTest is Test {
 
     function setUp() public {
         DEADLINE = block.timestamp + 7 days;
-        campaign = new CrowdFund(creator, TITLE, GOAL, DEADLINE);
+        campaign = new CrowdFund(creator, address(0), TITLE, GOAL, DEADLINE);
 
         vm.deal(alice, 100 ether);
         vm.deal(bob, 100 ether);
@@ -48,22 +48,22 @@ contract CrowdFundTest is Test {
     function test_Constructor_EmitsCampaignCreated() public {
         vm.expectEmit(true, false, false, true);
         emit CampaignCreated(creator, TITLE, GOAL, DEADLINE);
-        new CrowdFund(creator, TITLE, GOAL, DEADLINE);
+        new CrowdFund(creator, address(0), TITLE, GOAL, DEADLINE);
     }
 
     function test_Constructor_RevertsZeroCreator() public {
         vm.expectRevert(CrowdFund.ZeroCreator.selector);
-        new CrowdFund(address(0), TITLE, GOAL, DEADLINE);
+        new CrowdFund(address(0), address(0), TITLE, GOAL, DEADLINE);
     }
 
     function test_Constructor_RevertsZeroGoal() public {
         vm.expectRevert(CrowdFund.ZeroGoal.selector);
-        new CrowdFund(creator, TITLE, 0, DEADLINE);
+        new CrowdFund(creator, address(0), TITLE, 0, DEADLINE);
     }
 
     function test_Constructor_RevertsDeadlineInPast() public {
         vm.expectRevert(CrowdFund.DeadlineInPast.selector);
-        new CrowdFund(creator, TITLE, GOAL, block.timestamp);
+        new CrowdFund(creator, address(0), TITLE, GOAL, block.timestamp);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -197,7 +197,7 @@ contract CrowdFundTest is Test {
     function test_Withdraw_RevertsWhenCreatorRejectsETH() public {
         // Deploy a campaign whose creator is a contract that rejects ETH.
         RejectETH badCreator = new RejectETH();
-        CrowdFund c = new CrowdFund(address(badCreator), TITLE, GOAL, DEADLINE);
+        CrowdFund c = new CrowdFund(address(badCreator), address(0), TITLE, GOAL, DEADLINE);
         vm.deal(alice, 100 ether);
         vm.prank(alice);
         c.contribute{value: GOAL}();
