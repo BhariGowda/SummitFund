@@ -1,0 +1,14 @@
+# Foundry
+out/
+cache/
+broadcast/
+
+# Dependencies
+node_modules/
+
+# Env / secrets
+.env
+.env.local
+
+# Keystore
+keystore/
