@@ -50,6 +50,8 @@ contract MilestoneCrowdFund {
     error ZeroMilestone();
     /// @notice Thrown when the supplied milestone amounts do not sum to the goal.
     error MilestoneSumMismatch();
+    /// @notice Thrown when the milestone description and amount arrays differ in length.
+    error MilestoneCountMismatch();
     /// @notice Thrown when contributing after the deadline has passed.
     error CampaignEnded();
     /// @notice Thrown when contributing after the goal has been reached (funding closed).
@@ -174,6 +176,9 @@ contract MilestoneCrowdFund {
     /// @notice Ordered milestone amounts, summing to {goal}.
     uint256[] public milestones;
 
+    /// @notice Human-readable description for each milestone, parallel to {milestones}.
+    string[] public descriptions;
+
     /// @notice The index of the next milestone the creator may request.
     uint256 public nextMilestone;
 
@@ -223,19 +228,23 @@ contract MilestoneCrowdFund {
     /// @param _title      Human-readable title.
     /// @param _goal       Funding target in the campaign's unit. Must be non-zero.
     /// @param _deadline   Unix timestamp strictly in the future.
-    /// @param _milestones Ordered milestone amounts; each non-zero and summing to `_goal`.
+    /// @param _milestones   Ordered milestone amounts; each non-zero and summing to `_goal`.
+    /// @param _descriptions Human-readable description for each milestone; must be the same
+    ///                      length as `_milestones`.
     constructor(
         address _creator,
         address _token,
         string memory _title,
         uint256 _goal,
         uint256 _deadline,
-        uint256[] memory _milestones
+        uint256[] memory _milestones,
+        string[] memory _descriptions
     ) {
         if (_creator == address(0)) revert ZeroCreator();
         if (_goal == 0) revert ZeroGoal();
         if (_deadline <= block.timestamp) revert DeadlineInPast();
         if (_milestones.length == 0) revert NoMilestones();
+        if (_descriptions.length != _milestones.length) revert MilestoneCountMismatch();
 
         uint256 sum;
         for (uint256 i = 0; i < _milestones.length; i++) {
@@ -250,6 +259,7 @@ contract MilestoneCrowdFund {
         goal = _goal;
         deadline = _deadline;
         milestones = _milestones;
+        descriptions = _descriptions;
 
         emit CampaignCreated(_creator, _title, _goal, _deadline, _milestones.length);
     }
@@ -445,6 +455,14 @@ contract MilestoneCrowdFund {
     {
         if (index >= milestones.length) revert InvalidMilestone();
         return (milestones[index], status[index], approveVotes[index], rejectVotes[index]);
+    }
+
+    /// @notice The human-readable description recorded for a milestone at creation.
+    /// @param index The milestone to inspect.
+    /// @return The milestone's description string.
+    function milestoneDescription(uint256 index) external view returns (string memory) {
+        if (index >= milestones.length) revert InvalidMilestone();
+        return descriptions[index];
     }
 
     /// @notice The pro-rata refund an address could claim after a rejection.

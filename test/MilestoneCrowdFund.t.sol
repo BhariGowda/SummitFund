@@ -43,7 +43,7 @@ contract MilestoneCrowdFundTest is Test {
 
     function setUp() public {
         DEADLINE = block.timestamp + 7 days;
-        campaign = new MilestoneCrowdFund(creator, address(0), TITLE, GOAL, DEADLINE, _schedule());
+        campaign = new MilestoneCrowdFund(creator, address(0), TITLE, GOAL, DEADLINE, _schedule(), _descriptions());
 
         vm.deal(alice, 100 ether);
         vm.deal(bob, 100 ether);
@@ -55,6 +55,22 @@ contract MilestoneCrowdFundTest is Test {
         m[0] = M0;
         m[1] = M1;
         m[2] = M2;
+    }
+
+    /// @dev Descriptions parallel to {_schedule}'s three-milestone amounts.
+    function _descriptions() internal pure returns (string[] memory d) {
+        d = new string[](3);
+        d[0] = "Design";
+        d[1] = "Build";
+        d[2] = "Launch";
+    }
+
+    /// @dev `n` generic, non-empty milestone descriptions for custom-length schedules.
+    function _descsFor(uint256 n) internal pure returns (string[] memory d) {
+        d = new string[](n);
+        for (uint256 i = 0; i < n; i++) {
+            d[i] = "milestone";
+        }
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -79,30 +95,30 @@ contract MilestoneCrowdFundTest is Test {
     function test_Constructor_EmitsCampaignCreated() public {
         vm.expectEmit(true, false, false, true);
         emit CampaignCreated(creator, TITLE, GOAL, DEADLINE, 3);
-        new MilestoneCrowdFund(creator, address(0), TITLE, GOAL, DEADLINE, _schedule());
+        new MilestoneCrowdFund(creator, address(0), TITLE, GOAL, DEADLINE, _schedule(), _descriptions());
     }
 
     function test_Constructor_RevertsZeroCreator() public {
         vm.expectRevert(MilestoneCrowdFund.ZeroCreator.selector);
-        new MilestoneCrowdFund(address(0), address(0), TITLE, GOAL, DEADLINE, _schedule());
+        new MilestoneCrowdFund(address(0), address(0), TITLE, GOAL, DEADLINE, _schedule(), _descriptions());
     }
 
     function test_Constructor_RevertsZeroGoal() public {
         uint256[] memory m = new uint256[](1);
         m[0] = 1; // non-zero milestone but zero goal -> ZeroGoal fires first.
         vm.expectRevert(MilestoneCrowdFund.ZeroGoal.selector);
-        new MilestoneCrowdFund(creator, address(0), TITLE, 0, DEADLINE, m);
+        new MilestoneCrowdFund(creator, address(0), TITLE, 0, DEADLINE, m, _descsFor(1));
     }
 
     function test_Constructor_RevertsDeadlineInPast() public {
         vm.expectRevert(MilestoneCrowdFund.DeadlineInPast.selector);
-        new MilestoneCrowdFund(creator, address(0), TITLE, GOAL, block.timestamp, _schedule());
+        new MilestoneCrowdFund(creator, address(0), TITLE, GOAL, block.timestamp, _schedule(), _descriptions());
     }
 
     function test_Constructor_RevertsNoMilestones() public {
         uint256[] memory m = new uint256[](0);
         vm.expectRevert(MilestoneCrowdFund.NoMilestones.selector);
-        new MilestoneCrowdFund(creator, address(0), TITLE, GOAL, DEADLINE, m);
+        new MilestoneCrowdFund(creator, address(0), TITLE, GOAL, DEADLINE, m, _descsFor(0));
     }
 
     function test_Constructor_RevertsZeroMilestone() public {
@@ -110,7 +126,7 @@ contract MilestoneCrowdFundTest is Test {
         m[0] = GOAL;
         m[1] = 0;
         vm.expectRevert(MilestoneCrowdFund.ZeroMilestone.selector);
-        new MilestoneCrowdFund(creator, address(0), TITLE, GOAL, DEADLINE, m);
+        new MilestoneCrowdFund(creator, address(0), TITLE, GOAL, DEADLINE, m, _descsFor(2));
     }
 
     function test_Constructor_RevertsSumTooLow() public {
@@ -118,7 +134,7 @@ contract MilestoneCrowdFundTest is Test {
         m[0] = 1 ether;
         m[1] = 1 ether; // sums to 2, goal is 10.
         vm.expectRevert(MilestoneCrowdFund.MilestoneSumMismatch.selector);
-        new MilestoneCrowdFund(creator, address(0), TITLE, GOAL, DEADLINE, m);
+        new MilestoneCrowdFund(creator, address(0), TITLE, GOAL, DEADLINE, m, _descsFor(2));
     }
 
     function test_Constructor_RevertsSumTooHigh() public {
@@ -126,13 +142,38 @@ contract MilestoneCrowdFundTest is Test {
         m[0] = 6 ether;
         m[1] = 6 ether; // sums to 12, goal is 10.
         vm.expectRevert(MilestoneCrowdFund.MilestoneSumMismatch.selector);
-        new MilestoneCrowdFund(creator, address(0), TITLE, GOAL, DEADLINE, m);
+        new MilestoneCrowdFund(creator, address(0), TITLE, GOAL, DEADLINE, m, _descsFor(2));
+    }
+
+    function test_Constructor_StoresDescriptions() public view {
+        assertEq(campaign.descriptions(0), "Design");
+        assertEq(campaign.descriptions(1), "Build");
+        assertEq(campaign.descriptions(2), "Launch");
+    }
+
+    function test_MilestoneDescription_ReturnsStored() public view {
+        assertEq(campaign.milestoneDescription(0), "Design");
+        assertEq(campaign.milestoneDescription(2), "Launch");
+    }
+
+    function test_MilestoneDescription_RevertsOutOfRange() public {
+        vm.expectRevert(MilestoneCrowdFund.InvalidMilestone.selector);
+        campaign.milestoneDescription(3);
+    }
+
+    function test_Constructor_RevertsDescriptionCountMismatch() public {
+        // Three amounts but only two descriptions.
+        string[] memory d = new string[](2);
+        d[0] = "a";
+        d[1] = "b";
+        vm.expectRevert(MilestoneCrowdFund.MilestoneCountMismatch.selector);
+        new MilestoneCrowdFund(creator, address(0), TITLE, GOAL, DEADLINE, _schedule(), d);
     }
 
     function test_Constructor_SingleMilestoneOk() public {
         uint256[] memory m = new uint256[](1);
         m[0] = GOAL;
-        MilestoneCrowdFund c = new MilestoneCrowdFund(creator, address(0), TITLE, GOAL, DEADLINE, m);
+        MilestoneCrowdFund c = new MilestoneCrowdFund(creator, address(0), TITLE, GOAL, DEADLINE, m, _descsFor(1));
         assertEq(c.milestoneCount(), 1);
     }
 
@@ -626,7 +667,7 @@ contract MilestoneCrowdFundTest is Test {
 
     function test_ERC20_FullMilestoneFlow() public {
         MockERC20 mtk = new MockERC20();
-        MilestoneCrowdFund c = new MilestoneCrowdFund(creator, address(mtk), TITLE, GOAL, DEADLINE, _schedule());
+        MilestoneCrowdFund c = new MilestoneCrowdFund(creator, address(mtk), TITLE, GOAL, DEADLINE, _schedule(), _descriptions());
 
         mtk.mint(alice, GOAL);
         vm.startPrank(alice);
@@ -653,7 +694,7 @@ contract MilestoneCrowdFundTest is Test {
 
     function test_ERC20_ProRataRefundOnRejection() public {
         MockERC20 mtk = new MockERC20();
-        MilestoneCrowdFund c = new MilestoneCrowdFund(creator, address(mtk), TITLE, GOAL, DEADLINE, _schedule());
+        MilestoneCrowdFund c = new MilestoneCrowdFund(creator, address(mtk), TITLE, GOAL, DEADLINE, _schedule(), _descriptions());
 
         mtk.mint(alice, 4 ether);
         mtk.mint(bob, 6 ether);
@@ -683,7 +724,7 @@ contract MilestoneCrowdFundTest is Test {
 
     function test_ERC20_RevertsEthEntrypoint() public {
         MockERC20 mtk = new MockERC20();
-        MilestoneCrowdFund c = new MilestoneCrowdFund(creator, address(mtk), TITLE, GOAL, DEADLINE, _schedule());
+        MilestoneCrowdFund c = new MilestoneCrowdFund(creator, address(mtk), TITLE, GOAL, DEADLINE, _schedule(), _descriptions());
         vm.deal(alice, 1 ether);
         vm.prank(alice);
         vm.expectRevert(MilestoneCrowdFund.NotEthCampaign.selector);
@@ -702,7 +743,7 @@ contract MilestoneCrowdFundTest is Test {
     function test_Reentrancy_GuardBlocksReentrantClaim() public {
         // A malicious creator that re-enters claimMilestone during ETH payout.
         ReentrantCreator bad = new ReentrantCreator();
-        MilestoneCrowdFund c = new MilestoneCrowdFund(address(bad), address(0), TITLE, GOAL, DEADLINE, _schedule());
+        MilestoneCrowdFund c = new MilestoneCrowdFund(address(bad), address(0), TITLE, GOAL, DEADLINE, _schedule(), _descriptions());
         bad.setTarget(c);
 
         vm.prank(alice);
@@ -731,7 +772,7 @@ contract MilestoneCrowdFundTest is Test {
 
         uint256[] memory m = new uint256[](1);
         m[0] = total;
-        MilestoneCrowdFund c = new MilestoneCrowdFund(creator, address(0), TITLE, total, DEADLINE, m);
+        MilestoneCrowdFund c = new MilestoneCrowdFund(creator, address(0), TITLE, total, DEADLINE, m, _descsFor(1));
 
         vm.deal(alice, a);
         vm.deal(bob, b);
@@ -764,7 +805,7 @@ contract MilestoneCrowdFundTest is Test {
         uint256 total = uint256(bound(raise, 2 ether, 100 ether));
         uint256[] memory m = new uint256[](1);
         m[0] = total;
-        MilestoneCrowdFund c = new MilestoneCrowdFund(creator, address(0), TITLE, total, DEADLINE, m);
+        MilestoneCrowdFund c = new MilestoneCrowdFund(creator, address(0), TITLE, total, DEADLINE, m, _descsFor(1));
 
         // alice exactly half, bob exactly half (total is even-bounded? not necessarily).
         uint256 half = total / 2;
