@@ -50,6 +50,12 @@ contract CrowdFund {
     error TransferFailed();
     /// @notice Thrown when an ERC20 transfer or transferFrom fails.
     error TokenTransferFailed();
+    /// @notice Thrown when a campaign is constructed with a non-zero token address that
+    ///         holds no contract code, i.e. an EOA or undeployed account.
+    error InvalidToken();
+    /// @notice Thrown when an ERC20-only path is given the zero token address, which would
+    ///         silently fall back to ETH mode. Used by the factory's ERC20 entrypoint.
+    error TokenNotSupported();
     /// @notice Thrown when the ETH `contribute()` entrypoint is used on a token campaign.
     error NotEthCampaign();
     /// @notice Thrown when the ERC20 `contribute(uint256)` entrypoint is used on an ETH
@@ -144,6 +150,8 @@ contract CrowdFund {
         if (_creator == address(0)) revert ZeroCreator();
         if (_goal == 0) revert ZeroGoal();
         if (_deadline <= block.timestamp) revert DeadlineInPast();
+        // A non-zero token must be a real contract; an EOA here would brick contribute().
+        if (_token != address(0) && _token.code.length == 0) revert InvalidToken();
 
         creator = _creator;
         token = _token;

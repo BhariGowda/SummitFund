@@ -82,6 +82,24 @@ contract CrowdFundFactory {
         return _createCampaign(token, title, goal, deadline);
     }
 
+    /// @notice Deploy a new ERC20-denominated crowdfunding campaign owned by the caller.
+    /// @dev    Dedicated ERC20 entrypoint. Unlike the token-bearing {createCampaign} overload,
+    ///         this rejects the zero token address with {CrowdFund.TokenNotSupported} so an
+    ///         intended-ERC20 campaign cannot silently fall back to ETH mode. Use the
+    ///         token-less {createCampaign} for ETH campaigns.
+    /// @param title    Human-readable campaign title.
+    /// @param goal     Funding target in the token's base units. Must be non-zero.
+    /// @param deadline Unix timestamp strictly in the future.
+    /// @param token    The ERC20 token to denominate the campaign in. Must be non-zero.
+    /// @return campaign The address of the deployed {CrowdFund} instance.
+    function createCampaignERC20(string calldata title, uint256 goal, uint256 deadline, address token)
+        external
+        returns (address campaign)
+    {
+        if (token == address(0)) revert CrowdFund.TokenNotSupported();
+        return _createCampaign(token, title, goal, deadline);
+    }
+
     /*//////////////////////////////////////////////////////////////
                                VIEW HELPERS
     //////////////////////////////////////////////////////////////*/

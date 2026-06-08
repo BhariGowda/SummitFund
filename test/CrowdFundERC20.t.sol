@@ -57,6 +57,13 @@ contract CrowdFundERC20Test is Test {
         assertFalse(eth.isERC20());
     }
 
+    function test_Constructor_RevertsInvalidToken_OnEOA() public {
+        // A non-zero token with no code (an EOA) is rejected so the campaign can't brick.
+        address eoa = makeAddr("notAToken");
+        vm.expectRevert(CrowdFund.InvalidToken.selector);
+        new CrowdFund(creator, eoa, TITLE, GOAL, DEADLINE);
+    }
+
     /*//////////////////////////////////////////////////////////////
                                CONTRIBUTE
     //////////////////////////////////////////////////////////////*/
@@ -316,6 +323,41 @@ contract CrowdFundERC20Test is Test {
         assertEq(c.token(), address(token));
         assertTrue(c.isERC20());
         assertEq(c.goal(), GOAL);
+    }
+
+    function test_Factory_CreateCampaignERC20_DeploysWithToken() public {
+        CrowdFundFactory factory = new CrowdFundFactory();
+        vm.prank(creator);
+        address addr = factory.createCampaignERC20(TITLE, GOAL, DEADLINE, address(token));
+
+        CrowdFund c = CrowdFund(addr);
+        assertEq(c.creator(), creator);
+        assertEq(c.token(), address(token));
+        assertTrue(c.isERC20());
+        assertEq(c.goal(), GOAL);
+    }
+
+    function test_Factory_CreateCampaignERC20_RevertsZeroToken() public {
+        CrowdFundFactory factory = new CrowdFundFactory();
+        vm.prank(creator);
+        vm.expectRevert(CrowdFund.TokenNotSupported.selector);
+        factory.createCampaignERC20(TITLE, GOAL, DEADLINE, address(0));
+    }
+
+    function test_Factory_CreateCampaignERC20_FunctionalEndToEnd() public {
+        CrowdFundFactory factory = new CrowdFundFactory();
+        vm.prank(creator);
+        address addr = factory.createCampaignERC20(TITLE, GOAL, DEADLINE, address(token));
+        CrowdFund c = CrowdFund(addr);
+
+        vm.startPrank(alice);
+        token.approve(addr, type(uint256).max);
+        c.contribute(GOAL);
+        vm.stopPrank();
+
+        vm.prank(creator);
+        c.withdraw();
+        assertEq(token.balanceOf(creator), GOAL);
     }
 
     function test_Factory_ComputeAddress_ERC20_MatchesDeployment() public {
