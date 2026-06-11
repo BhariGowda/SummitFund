@@ -114,17 +114,29 @@ contract MilestoneCrowdFund {
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Emitted once at construction with the campaign's immutable terms.
+    /// @param creator        Address entitled to drive milestones and receive released funds.
+    /// @param title          Human-readable campaign title.
+    /// @param goal           Funding target in the campaign's unit.
+    /// @param deadline       Unix timestamp after which contributions are closed.
+    /// @param milestoneCount Number of milestones defined at construction.
     event CampaignCreated(address indexed creator, string title, uint256 goal, uint256 deadline, uint256 milestoneCount);
 
     /// @notice Emitted on every successful contribution.
+    /// @param contributor Address that sent the funds.
+    /// @param amount      Amount credited in this call (campaign unit).
+    /// @param totalRaised Running total raised by the campaign after this call.
     event Contributed(address indexed contributor, uint256 amount, uint256 totalRaised);
 
     /// @notice Emitted when the creator opens voting on a milestone.
+    /// @param index  The milestone index whose vote was opened.
+    /// @param amount The milestone's release amount (campaign unit).
     event MilestoneRequested(uint256 indexed index, uint256 amount);
 
     /// @notice Emitted on every milestone vote.
-    /// @param approve     Whether the vote was in favor.
-    /// @param weight      The voter's contribution-weighted voting power.
+    /// @param index        The milestone index that was voted on.
+    /// @param voter        The contributor who cast the vote.
+    /// @param approve      Whether the vote was in favor.
+    /// @param weight       The voter's contribution-weighted voting power.
     /// @param approveVotes Running approval weight after this vote.
     /// @param rejectVotes  Running rejection weight after this vote.
     event MilestoneVoted(
@@ -137,15 +149,22 @@ contract MilestoneCrowdFund {
     );
 
     /// @notice Emitted when a milestone's vote crosses the approval threshold.
+    /// @param index The milestone index that was approved.
     event MilestoneApproved(uint256 indexed index);
 
     /// @notice Emitted when a milestone's vote can no longer be approved.
+    /// @param index      The milestone index that was rejected.
+    /// @param refundPool The escrow snapshot captured as the pro-rata refund basis.
     event MilestoneRejected(uint256 indexed index, uint256 refundPool);
 
     /// @notice Emitted when the creator pulls an approved milestone's funds.
+    /// @param index  The milestone index that was claimed.
+    /// @param amount The amount released to the creator (campaign unit).
     event MilestoneClaimed(uint256 indexed index, uint256 amount);
 
     /// @notice Emitted when a contributor reclaims funds (failed funding or rejection).
+    /// @param contributor Address that received the refund.
+    /// @param amount      Amount refunded (campaign unit).
     event Refunded(address indexed contributor, uint256 amount);
 
     /*//////////////////////////////////////////////////////////////
@@ -423,21 +442,25 @@ contract MilestoneCrowdFund {
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Whether this campaign is denominated in an ERC20 token rather than ETH.
+    /// @return True if a token address was set at construction.
     function isERC20() external view returns (bool) {
         return token != address(0);
     }
 
     /// @notice The number of milestones in this campaign.
+    /// @return The milestone count.
     function milestoneCount() external view returns (uint256) {
         return milestones.length;
     }
 
     /// @notice Whether the funding goal has been reached.
+    /// @return True if total raised is greater than or equal to the goal.
     function goalReached() external view returns (bool) {
         return totalRaised >= goal;
     }
 
     /// @notice Whether funding is still open (goal not yet reached and deadline not passed).
+    /// @return True if the goal is unmet and the current time is at or before the deadline.
     function isFunding() external view returns (bool) {
         return totalRaised < goal && block.timestamp <= deadline;
     }
@@ -467,6 +490,8 @@ contract MilestoneCrowdFund {
 
     /// @notice The pro-rata refund an address could claim after a rejection.
     /// @dev Returns zero before any rejection or once the address has already claimed.
+    /// @param account The address to quote.
+    /// @return The amount currently claimable via {claimRefund}, in the campaign's unit.
     function refundOwed(address account) external view returns (uint256) {
         if (!rejected || refundClaimed[account]) return 0;
         return (contributions[account] * refundPool) / totalRaised;
