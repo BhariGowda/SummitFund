@@ -21,4 +21,4 @@ Do NOT open public issues for security bugs.
 
 ## Audit Status
 
-Unaudited — use at your own risk.
+Unaudited  use at your own risk.
