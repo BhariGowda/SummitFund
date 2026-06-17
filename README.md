@@ -23,7 +23,7 @@ forge test
 ```
 
 ## Stats
-- 139 tests passing (unit, fuzz & invariant)
+- 146 tests passing (unit, fuzz & invariant)
 - 3 contracts: CrowdFund, CrowdFundFactory, MilestoneCrowdFund
 - Full NatSpec documentation
 - Slither static analysis configured
