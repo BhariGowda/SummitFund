@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.2.0] - 2026-06-17
+### Changed
+- Fuzz runs increased to 1000
+- Gas snapshot added
+- README updated with accurate test count
+
 ## [1.1.0] - 2026-06-10
 ### Added
 - ERC20 token support
