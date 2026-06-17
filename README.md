@@ -9,9 +9,9 @@ Decentralized crowdfunding protocol built with Solidity + Foundry + React + Wagm
 - Viem + Wagmi
 - Deployed on Base
 
-## Features (WIP)
+## Features
 - Create campaigns with funding goals + deadlines
-- Contribute ETH/ERC20
+- Contribute ETH or any whitelisted ERC20 token
 - Auto-refund if goal not met
 - On-chain milestone releases
 
@@ -23,7 +23,7 @@ forge test
 ```
 
 ## Stats
-- 146 tests passing (unit + fuzz + invariant)
+- 139 tests passing (unit, fuzz & invariant)
 - 3 contracts: CrowdFund, CrowdFundFactory, MilestoneCrowdFund
 - Full NatSpec documentation
 - Slither static analysis configured
