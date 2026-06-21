@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import {Test} from "forge-std/Test.sol";
 import {MilestoneCrowdFund} from "../src/MilestoneCrowdFund.sol";
-import {MockERC20} from "./mocks/MockERC20.sol";
+import {MockERC20, ReturnsFalseERC20} from "./mocks/MockERC20.sol";
 
 /// @title MilestoneCrowdFundTest
 /// @notice Unit, edge-case, and fuzz coverage for {MilestoneCrowdFund}.
@@ -918,5 +918,31 @@ contract ReentrantCreator {
             armed = false;
             target.claimMilestone(0); // nested call hits the reentrancy guard
         }
+    }
+}
+
+/// @dev Targeted test for the TokenTransferFailed guard not covered by the main test suite.
+contract MilestoneCrowdFundTokenGuardTest is Test {
+    function test_RevertWhen_ContributeWithReturnsFalseToken() public {
+        address creator = makeAddr("creator");
+        address alice = makeAddr("alice");
+        uint256 goal = 10 ether;
+        uint256 deadline = block.timestamp + 7 days;
+
+        uint256[] memory milestones = new uint256[](1);
+        milestones[0] = goal;
+        string[] memory descriptions = new string[](1);
+        descriptions[0] = "Single milestone";
+
+        ReturnsFalseERC20 badToken = new ReturnsFalseERC20();
+        MilestoneCrowdFund c =
+            new MilestoneCrowdFund(creator, address(badToken), "Test", goal, deadline, milestones, descriptions);
+
+        badToken.mint(alice, 100 ether);
+        vm.startPrank(alice);
+        badToken.approve(address(c), type(uint256).max);
+        vm.expectRevert(MilestoneCrowdFund.TokenTransferFailed.selector);
+        c.contribute(1 ether);
+        vm.stopPrank();
     }
 }
