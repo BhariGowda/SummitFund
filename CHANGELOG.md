@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.3.0] - 2026-06-20
+### Added
+- Explicit reentrancy guard test for `CrowdFund.withdraw()` via a malicious creator contract, verified by execution trace
+- `TokenTransferFailed` revert test for `MilestoneCrowdFund.contribute()`
+
+### Fixed
+- `lib/forge-std` registered as a proper git submodule (was a plain directory dump causing CI failures on a fresh clone)
+- GitHub Actions CI workflow added, running the full test suite on every push and PR
+
+### Changed
+- Branch coverage: 80.23% -> 81.61% (148 tests passing)
+
 ## [1.2.0] - 2026-06-17
 ### Changed
 - Fuzz runs increased to 1000
