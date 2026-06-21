@@ -380,3 +380,46 @@ contract RejectETH {
         revert("no");
     }
 }
+
+/// @dev Malicious creator that attempts to re-enter withdraw() during the ETH payout.
+contract ReentrantWithdrawCreator {
+    CrowdFund internal target;
+    bool internal armed;
+
+    function setTarget(CrowdFund _t) external {
+        target = _t;
+    }
+
+    function arm() external {
+        armed = true;
+    }
+
+    function withdraw() external {
+        target.withdraw();
+    }
+
+    receive() external payable {
+        if (armed) {
+            armed = false;
+            target.withdraw(); // nested call should hit the reentrancy guard
+        }
+    }
+}
+
+contract CrowdFundReentrancyGuardTest is Test {
+    function test_RevertWhen_WithdrawReentersDuringPayout() public {
+        ReentrantWithdrawCreator attacker = new ReentrantWithdrawCreator();
+        CrowdFund campaign =
+            new CrowdFund(address(attacker), address(0), "Test Campaign", 1 ether, block.timestamp + 1 days);
+        attacker.setTarget(campaign);
+
+        address contributor = makeAddr("contributor");
+        vm.deal(contributor, 1 ether);
+        vm.prank(contributor);
+        campaign.contribute{value: 1 ether}();
+
+        attacker.arm();
+        vm.expectRevert(CrowdFund.TransferFailed.selector);
+        attacker.withdraw();
+    }
+}
