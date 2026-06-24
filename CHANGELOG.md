@@ -31,3 +31,7 @@
 - CrowdFund.sol - ETH crowdfunding with escrow
 - CrowdFundFactory.sol - CREATE2 deployer
 - 44 tests passing
+## June 2026 Update
+- 146 tests passing (unit, fuzz, invariant)
+- Full security tooling (Slither, GitHub Actions CI)
+- Deployed and verified on Base Sepolia (pending)
