@@ -36,3 +36,11 @@ forge test
 - [Security Policy](SECURITY.md) — vulnerability disclosure process
 - [Slither Findings](docs/SLITHER.md) — static analysis results and notes
 - [Coverage Report](docs/COVERAGE.md) — per-contract test coverage breakdown
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for dev setup, code standards, and PR process.
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for a full version history.
