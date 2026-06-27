@@ -1,28 +1,43 @@
 # CrowdFund DApp
 
-Decentralized crowdfunding protocol built with Solidity + Foundry + React + Wagmi.
+A decentralized crowdfunding protocol built in Solidity — the smart contract infrastructure behind my personal Everest summit fundraise.
+
+## The Real Use Case
+
+In 2027 I'm attempting to summit Mount Everest. The goal is $69,000. No bank, no Kickstarter, no middleman — the funds are held on-chain, contributors get auto-refunds if the summit fails, and milestone releases ensure accountability along the way.
+
+This protocol is what makes that possible. It started as a single `Crowdfund.sol` for the EverestOrBust campaign. It grew into a full protocol suite with a factory, milestone-based fund releases, and contribution-weighted governance over fund disbursement.
+
+[Follow the climb →](https://twitter.com/BhariGowda)
+
+## Protocol
+
+Three contracts, one purpose:
+
+**CrowdFund.sol** — single campaign escrow. ETH or any ERC20 token. Auto-refund if the goal isn't met by the deadline. Used directly for the EverestOrBust campaign.
+
+**CrowdFundFactory.sol** — CREATE2 deployer. Predictable addresses, per-creator campaign tracking, ETH and ERC20 variants.
+
+**MilestoneCrowdFund.sol** — milestone-based fund release with contributor voting. The creator requests each milestone; contributors vote to approve or reject. Rejected milestones trigger a pro-rata refund of the remaining pool. Built for campaigns where accountability matters.
 
 ## Stack
-- Solidity ^0.8.20
-- Foundry (forge, cast)
-- React + TypeScript
-- Viem + Wagmi
+
+- Solidity ^0.8.20 + Foundry
+- React + TypeScript + Viem + Wagmi
 - Deployed on Base
 
-## Features
-- Create campaigns with funding goals + deadlines
-- Contribute ETH or any whitelisted ERC20 token
-- Auto-refund if goal not met
-- On-chain milestone releases
+## Tests
 
-## Setup
 ```bash
 forge install
 forge build
 forge test
 ```
 
+148 tests passing — unit, fuzz (1000 runs/property), and invariant (500,000 calls/invariant). Every custom error has an explicit revert test. Reentrancy guards verified by execution trace against malicious creator contracts.
+
 ## Stats
+
 - 148 tests passing (unit, fuzz & invariant)
 - 3 contracts: CrowdFund, CrowdFundFactory, MilestoneCrowdFund
 - Full NatSpec documentation
