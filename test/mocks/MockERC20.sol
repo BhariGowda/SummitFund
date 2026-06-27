@@ -9,6 +9,7 @@ contract MockERC20 {
     string public name = "Mock Token";
     string public symbol = "MOCK";
     uint8 public decimals = 18;
+    function setDecimals(uint8 d) external { decimals = d; }
 
     uint256 public totalSupply;
     mapping(address => uint256) public balanceOf;
@@ -60,6 +61,7 @@ contract FeeOnTransferERC20 {
     string public name = "Fee Token";
     string public symbol = "FEE";
     uint8 public decimals = 18;
+    function setDecimals(uint8 d) external { decimals = d; }
 
     /// @notice Fee in basis points (1% = 100 bps) taken from each transfer.
     uint256 public immutable feeBps;
