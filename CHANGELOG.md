@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.4.0] - 2026-06-27
+### Added
+- `EverestOrBust.sol` — the actual Everest summit 2027 fundraise contract
+  - Accepts USDC, USDT, and DAI (stablecoins only, no oracle needed)
+  - $69 per-address contribution cap enforced on-chain
+  - $69,000 goal, 69-day campaign (Jan 1 – Mar 10 2027)
+  - Auto-refund if goal not met by deadline
+  - Pro-rata excess redemption if campaign is overfunded
+  - Inline reentrancy guard (no external dependencies)
+- `script/DeployEverestOrBust.s.sol` — deploy script for Ethereum and Base mainnet
+- 33 tests covering all revert paths including a real reentrancy attack via malicious token
+
 ## [1.3.0] - 2026-06-20
 ### Added
 - Explicit reentrancy guard test for `CrowdFund.withdraw()` via a malicious creator contract, verified by execution trace
