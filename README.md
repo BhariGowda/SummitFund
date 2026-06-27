@@ -16,6 +16,8 @@ Three contracts, one purpose:
 
 **CrowdFund.sol** — single campaign escrow. ETH or any ERC20 token. Auto-refund if the goal isn't met by the deadline. Used directly for the EverestOrBust campaign.
 
+**EverestOrBust.sol** — the actual campaign contract. USDC, USDT, and DAI. $69 cap per address. $69,000 goal. 69-day campaign (Jan 1 – Mar 10 2027). Auto-refund if goal not met. Pro-rata excess redemption if overfunded. No oracle needed — stablecoins only.
+
 **CrowdFundFactory.sol** — CREATE2 deployer. Predictable addresses, per-creator campaign tracking, ETH and ERC20 variants.
 
 **MilestoneCrowdFund.sol** — milestone-based fund release with contributor voting. The creator requests each milestone; contributors vote to approve or reject. Rejected milestones trigger a pro-rata refund of the remaining pool. Built for campaigns where accountability matters.
@@ -34,12 +36,12 @@ forge build
 forge test
 ```
 
-148 tests passing — unit, fuzz (1000 runs/property), and invariant (500,000 calls/invariant). Every custom error has an explicit revert test. Reentrancy guards verified by execution trace against malicious creator contracts.
+181 tests passing — unit, fuzz (1000 runs/property), and invariant (500,000 calls/invariant). Every custom error has an explicit revert test. Reentrancy guards verified by execution trace against malicious creator contracts.
 
 ## Stats
 
 - 148 tests passing (unit, fuzz & invariant)
-- 3 contracts: CrowdFund, CrowdFundFactory, MilestoneCrowdFund
+- 4 contracts: CrowdFund, CrowdFundFactory, MilestoneCrowdFund, EverestOrBust
 - Full NatSpec documentation
 - 81.61% branch coverage
 
