@@ -6,17 +6,17 @@ import {console2} from "forge-std/console2.sol";
 import {CrowdFundFactory} from "../src/CrowdFundFactory.sol";
 
 /// @title Deploy
-/// @notice Deploys the {CrowdFundFactory} to Base (or Base Sepolia).
+/// @notice Deploys the {CrowdFundFactory} to Ethereum mainnet or Sepolia testnet.
 /// @dev    Usage:
 ///         forge script script/Deploy.s.sol:Deploy \
-///             --rpc-url base \
+///             --rpc-url sepolia \
 ///             --account <keystore-account> \
 ///             --broadcast \
 ///             --verify
 ///
 ///         Required environment / config:
-///         - BASE_RPC_URL (or BASE_SEPOLIA_RPC_URL) in foundry.toml [rpc_endpoints]
-///         - BASESCAN_API_KEY for --verify
+///         - ETH_RPC_URL or SEPOLIA_RPC_URL in foundry.toml [rpc_endpoints]
+///         - ETHERSCAN_API_KEY for --verify
 ///
 ///         Individual campaigns are not deployed here; users create them on-chain
 ///         by calling {CrowdFundFactory.createCampaign}.

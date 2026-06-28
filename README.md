@@ -26,7 +26,7 @@ Three contracts, one purpose:
 
 - Solidity ^0.8.20 + Foundry
 - React + TypeScript + Viem + Wagmi
-- Deployed on Base
+- Ethereum mainnet + Sepolia testnet
 
 ## Tests
 

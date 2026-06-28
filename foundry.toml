@@ -14,11 +14,11 @@ fs_permissions = [{ access = "read", path = "./" }]
 runs = 1000
 
 [rpc_endpoints]
-base = "${BASE_RPC_URL}"
-base_sepolia = "${BASE_SEPOLIA_RPC_URL}"
+mainnet = "${ETH_RPC_URL}"
+sepolia = "${SEPOLIA_RPC_URL}"
 
 [etherscan]
-base = { key = "${BASESCAN_API_KEY}", chain = 8453 }
-base_sepolia = { key = "${BASESCAN_API_KEY}", chain = 84532 }
+mainnet = { key = "${ETHERSCAN_API_KEY}", chain = 1 }
+sepolia = { key = "${ETHERSCAN_API_KEY}", chain = 11155111 }
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md
