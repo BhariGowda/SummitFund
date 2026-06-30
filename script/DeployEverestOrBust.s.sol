@@ -17,12 +17,12 @@ import {EverestOrBust} from "../src/EverestOrBust.sol";
 ///           forge script script/DeployEverestOrBust.s.sol \
 ///             --rpc-url mainnet --broadcast --verify
 ///
-///         Base Mainnet:
+///         Ethereum Mainnet:
 ///           forge script script/DeployEverestOrBust.s.sol \
-///             --rpc-url base --broadcast --verify
+///             --rpc-url mainnet --broadcast --verify
 ///
 ///         Required env vars:
-///           PRIVATE_KEY, ETHERSCAN_API_KEY (or BASESCAN_API_KEY)
+///           PRIVATE_KEY, ETHERSCAN_API_KEY
 ///           USDC_ADDRESS, USDT_ADDRESS, DAI_ADDRESS
 contract DeployEverestOrBust is Script {
     /// @dev Jan 1 2027 00:00:00 UTC

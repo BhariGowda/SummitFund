@@ -9,7 +9,7 @@
   - Auto-refund if goal not met by deadline
   - Pro-rata excess redemption if campaign is overfunded
   - Inline reentrancy guard (no external dependencies)
-- `script/DeployEverestOrBust.s.sol` — deploy script for Ethereum and Base mainnet
+- `script/DeployEverestOrBust.s.sol` — deploy script for Ethereum mainnet and Sepolia testnet
 - 33 tests covering all revert paths including a real reentrancy attack via malicious token
 
 ## [1.3.0] - 2026-06-20
@@ -46,4 +46,4 @@
 ## June 2026 Update
 - 146 tests passing (unit, fuzz, invariant)
 - Full security tooling (Slither, GitHub Actions CI)
-- Deployed and verified on Base Sepolia (pending)
+- Deployment pending (Sepolia testnet first, then Ethereum mainnet)
