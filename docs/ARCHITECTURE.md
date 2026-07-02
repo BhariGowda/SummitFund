@@ -1,11 +1,20 @@
 # Architecture
 
 ## Contracts
-- **CrowdFund.sol** — single campaign escrow (ETH + ERC20)
-- **CrowdFundFactory.sol** — CREATE2 deployer, predictable addresses
-- **MilestoneCrowdFund.sol** — milestone-based releases with voting
+
+- **CrowdFund.sol** — single campaign escrow (ETH or ERC20). All-or-nothing: creator withdraws on success, contributors refund on failure.
+- **CrowdFundFactory.sol** — CREATE2 deployer with predictable addresses and per-creator campaign tracking.
+- **MilestoneCrowdFund.sol** — milestone-based fund release with contribution-weighted voting. Rejected milestones trigger pro-rata refunds.
+- **EverestOrBust.sol** — the actual Everest 2027 fundraise contract. Multi-stablecoin (USDC/USDT/DAI), $69 per-address cap, $69,000 goal, 69-day campaign. No price oracle — stablecoins only. Pro-rata excess redemption if overfunded.
 
 ## Design Patterns
-- CEI (Checks-Effects-Interactions)
-- Custom errors for gas efficiency
-- Pull-over-push for refunds
+
+- **CEI (Checks-Effects-Interactions)** — all state changes happen before external calls
+- **Pull-over-push refunds** — contributors call `refund()` themselves; no loops, no push failures
+- **Custom errors** — gas-efficient reverts with descriptive selectors
+- **Inline reentrancy guard** — no external dependencies, same pattern across all contracts
+- **Normalized accounting** — EverestOrBust scales 6-decimal tokens (USDC/USDT) to 18 decimals internally for consistent cap and goal arithmetic
+
+## Networks
+
+Ethereum mainnet + Sepolia testnet only. No L2s — EverestOrBust holds real money and ETH mainnet has the strongest uptime guarantee of any EVM chain.
