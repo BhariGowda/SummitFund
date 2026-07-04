@@ -477,3 +477,139 @@ contract ReentrantToken {
         return true;
     }
 }
+
+/// @dev Targeted tests for branch coverage gaps in EverestOrBust
+contract EverestOrBustBranchGuardsTest is Test {
+    EverestOrBust campaign;
+    MockERC20 usdc;
+    MockERC20 usdt;
+    MockERC20 dai;
+
+    address creator = makeAddr("creator");
+    address alice   = makeAddr("alice");
+
+    uint256 constant START    = 1767225600;
+    uint256 constant DEADLINE = START + 69 days;
+
+    function setUp() public {
+        usdc = new MockERC20();
+        usdt = new MockERC20();
+        dai  = new MockERC20();
+        usdc.setDecimals(6);
+        usdt.setDecimals(6);
+        campaign = new EverestOrBust(creator, address(usdc), address(usdt), address(dai), START);
+        vm.warp(START);
+        usdc.mint(alice, 1000e6);
+        usdt.mint(alice, 1000e6);
+        dai.mint(alice, 1000e18);
+    }
+
+    /// @dev remaining() returns 0 when goal is met
+    function test_Remaining_ZeroWhenGoalMet() public {
+        _fillGoal();
+        assertEq(campaign.remaining(), 0);
+    }
+
+    /// @dev remainingCap() returns 0 when cap exhausted
+    function test_RemainingCap_ZeroWhenCapExhausted() public {
+        vm.startPrank(alice);
+        usdc.approve(address(campaign), 69e6);
+        campaign.contribute(address(usdc), 69e6);
+        vm.stopPrank();
+        assertEq(campaign.remainingCap(alice), 0);
+    }
+
+    /// @dev withdraw sends all three token types correctly
+    function test_Withdraw_AllThreeTokens() public {
+        // alice contributes USDC, USDT and DAI
+        vm.startPrank(alice);
+        usdc.approve(address(campaign), 23e6);
+        campaign.contribute(address(usdc), 23e6);
+        usdt.approve(address(campaign), 23e6);
+        campaign.contribute(address(usdt), 23e6);
+        dai.approve(address(campaign), 23e18);
+        campaign.contribute(address(dai), 23e18);
+        vm.stopPrank();
+
+        // fill rest of goal
+        _fillGoalExcept(69e18);
+
+        vm.warp(DEADLINE + 1);
+        uint256 usdcBefore = usdc.balanceOf(creator);
+        uint256 usdtBefore = usdt.balanceOf(creator);
+        uint256 daiBefore  = dai.balanceOf(creator);
+
+        vm.prank(creator);
+        campaign.withdraw();
+
+        assertGt(usdc.balanceOf(creator), usdcBefore);
+        assertGt(usdt.balanceOf(creator), usdtBefore);
+        assertGt(dai.balanceOf(creator),  daiBefore);
+    }
+
+    /// @dev refund returns all three token types correctly
+    function test_Refund_AllThreeTokens() public {
+        vm.startPrank(alice);
+        usdc.approve(address(campaign), 20e6);
+        campaign.contribute(address(usdc), 20e6);
+        usdt.approve(address(campaign), 20e6);
+        campaign.contribute(address(usdt), 20e6);
+        dai.approve(address(campaign), 20e18);
+        campaign.contribute(address(dai), 20e18);
+        vm.stopPrank();
+
+        vm.warp(DEADLINE + 1);
+        uint256 usdcBefore = usdc.balanceOf(alice);
+        uint256 usdtBefore = usdt.balanceOf(alice);
+        uint256 daiBefore  = dai.balanceOf(alice);
+
+        vm.prank(alice);
+        campaign.refund();
+
+        assertEq(usdc.balanceOf(alice), usdcBefore + 20e6);
+        assertEq(usdt.balanceOf(alice), usdtBefore + 20e6);
+        assertEq(dai.balanceOf(alice),  daiBefore  + 20e18);
+    }
+
+    /// @dev contribute with USDT hits the else-if branch
+    function test_Contribute_USDT_HitsElseIfBranch() public {
+        vm.startPrank(alice);
+        usdt.approve(address(campaign), 30e6);
+        campaign.contribute(address(usdt), 30e6);
+        vm.stopPrank();
+        assertEq(campaign.contributedUSDT(alice), 30e6);
+    }
+
+    /// @dev contribute with DAI hits the else branch
+    function test_Contribute_DAI_HitsElseBranch() public {
+        vm.startPrank(alice);
+        dai.approve(address(campaign), 30e18);
+        campaign.contribute(address(dai), 30e18);
+        vm.stopPrank();
+        assertEq(campaign.contributedDAI(alice), 30e18);
+    }
+
+    function _fillGoal() internal {
+        uint256 needed = 69_000e18 / 69e18;
+        for (uint256 i = 0; i < needed; i++) {
+            address contributor = address(uint160(0x2000 + i));
+            usdc.mint(contributor, 69e6);
+            vm.startPrank(contributor);
+            usdc.approve(address(campaign), 69e6);
+            campaign.contribute(address(usdc), 69e6);
+            vm.stopPrank();
+        }
+    }
+
+    function _fillGoalExcept(uint256 alreadyRaised) internal {
+        uint256 needed = (69_000e18 - alreadyRaised) / 69e18;
+        for (uint256 i = 0; i < needed; i++) {
+            address contributor = address(uint160(0x3000 + i));
+            usdc.mint(contributor, 69e6);
+            vm.startPrank(contributor);
+            usdc.approve(address(campaign), 69e6);
+            campaign.contribute(address(usdc), 69e6);
+            vm.stopPrank();
+        }
+    }
+}
