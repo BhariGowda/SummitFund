@@ -6,9 +6,9 @@ import {IERC20} from "./IERC20.sol";
 /// @title EverestOrBust
 /// @author Bhari Gowda
 /// @notice Multi-stablecoin fundraise for the Everest summit attempt, 2027.
-///         $69,000 goal. 69-day campaign (Jan 1 - Mar 10 2027).
+///         $69,000 goal. 69-day campaign (Dec 10 2026 - Feb 17 2027).
 ///         Accepts USDC, USDT, and DAI. No price oracle needed.
-///         Each address may contribute at most $69 total across all tokens.
+///         Each address may contribute at most $6.9 total across all tokens.
 ///         If the goal is not reached, contributors may refund in full.
 ///         If the goal is exceeded, contributors may redeem their pro-rata excess.
 /// @dev    All internal accounting uses 18-decimal normalized units.
@@ -20,7 +20,7 @@ contract EverestOrBust {
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Maximum contribution per address, normalized to 18 decimals ($69)
-    uint256 public constant CAP_PER_ADDRESS = 69e18;
+    uint256 public constant CAP_PER_ADDRESS = 6.9e18;
     /// @notice Funding goal, normalized to 18 decimals ($69,000)
     uint256 public constant GOAL = 69_000e18;
     /// @notice Campaign duration in days
@@ -102,7 +102,7 @@ contract EverestOrBust {
     /// @param _usdc    USDC token address
     /// @param _usdt    USDT token address
     /// @param _dai     DAI token address
-    /// @param _start   Campaign start timestamp (Jan 1 2027 = 1767225600)
+    /// @param _start   Campaign start timestamp (Dec 10 2026 = 1765324800)
     constructor(address _creator, address _usdc, address _usdt, address _dai, uint256 _start) {
         creator = _creator;
         USDC = _usdc;

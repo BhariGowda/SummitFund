@@ -25,8 +25,8 @@ import {EverestOrBust} from "../src/EverestOrBust.sol";
 ///           PRIVATE_KEY, ETHERSCAN_API_KEY
 ///           USDC_ADDRESS, USDT_ADDRESS, DAI_ADDRESS
 contract DeployEverestOrBust is Script {
-    /// @dev Jan 1 2027 00:00:00 UTC
-    uint256 constant START = 1767225600;
+    /// @dev Dec 10 2026 00:00:00 UTC
+    uint256 constant START = 1765324800;
 
     function run() external returns (EverestOrBust campaign) {
         address usdc = vm.envAddress("USDC_ADDRESS");
