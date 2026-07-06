@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.5.0] - 2026-07-05
+### Changed
+- `EverestOrBust.sol` — contribution cap reduced from $69 to $6.9 per address
+  - Goal stays $69,000 — now requires 10,000 contributors instead of 1,000
+  - Truly community-funded: $6.9 is accessible to anyone, anywhere
+  - Campaign dates updated: Dec 10 2026 – Feb 17 2027 (69 days)
+  - All 39 tests updated and passing with new parameters
+- `foundry.toml` — increased gas limit for 10k-contributor test loops
+
 ## [1.4.0] - 2026-06-27
 ### Added
 - `EverestOrBust.sol` — the actual Everest summit 2027 fundraise contract
