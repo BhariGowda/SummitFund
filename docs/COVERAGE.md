@@ -23,7 +23,7 @@ forge coverage --report summary --ir-minimum
 | MilestoneCrowdFund | 98.52% | 96.41% | 90.91% | 100% |
 | EverestOrBust | 97.98% | 94.81% | 86.84% | 100% |
 
-187 tests passing across unit, fuzz (1000 runs/property), and invariant (500,000 calls/invariant) suites. Includes 39 dedicated EverestOrBust tests covering every custom error, happy paths, branch coverage, and a verified reentrancy attack via malicious token.
+187 tests passing across unit, fuzz (1000 runs/property), and invariant (500,000 calls/invariant) suites. Includes 39 dedicated EverestOrBust tests covering every custom error, happy paths, branch coverage, and a verified reentrancy attack via malicious token. All tests updated for \$6.9 cap and Dec 10 2026 campaign parameters.
 
 ## Remaining Gaps
 
