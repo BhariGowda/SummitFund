@@ -19,7 +19,7 @@ contract EverestOrBust {
                                CONSTANTS
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice Maximum contribution per address, normalized to 18 decimals ($69)
+    /// @notice Maximum contribution per address, normalized to 18 decimals ($6.9)
     uint256 public constant CAP_PER_ADDRESS = 6.9e18;
     /// @notice Funding goal, normalized to 18 decimals ($69,000)
     uint256 public constant GOAL = 69_000e18;
@@ -181,6 +181,7 @@ contract EverestOrBust {
         if (block.timestamp <= deadline) revert CampaignNotEnded();
         if (totalRaisedNormalized >= GOAL) revert GoalReached();
 
+        uint256 normalizedAmt = contributedNormalized[msg.sender];
         uint256 usdcAmt = contributedUSDC[msg.sender];
         uint256 usdtAmt = contributedUSDT[msg.sender];
         uint256 daiAmt = contributedDAI[msg.sender];
@@ -190,6 +191,7 @@ contract EverestOrBust {
         contributedUSDT[msg.sender] = 0;
         contributedDAI[msg.sender] = 0;
         contributedNormalized[msg.sender] = 0;
+        totalRaisedNormalized -= normalizedAmt;
 
         if (usdcAmt > 0) _sendToken(USDC, msg.sender, usdcAmt);
         if (usdtAmt > 0) _sendToken(USDT, msg.sender, usdtAmt);
