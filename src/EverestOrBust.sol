@@ -230,8 +230,9 @@ contract EverestOrBust {
         uint256 usdtExcess = totalBalNormalized > 0 ? (usdtBal * myExcessNormalized) / totalBalNormalized : 0;
         uint256 daiExcess  = totalBalNormalized > 0 ? (daiBal  * myExcessNormalized) / totalBalNormalized : 0;
 
-        // reduce contributor's normalized balance
-        contributedNormalized[msg.sender] = myContrib - myExcessNormalized;
+        // zero out contributor's normalized balance and reduce total to prevent double redemption
+        contributedNormalized[msg.sender] = 0;
+        totalRaisedNormalized -= myExcessNormalized;
 
         if (usdcExcess > 0) _sendToken(USDC, msg.sender, usdcExcess);
         if (usdtExcess > 0) _sendToken(USDT, msg.sender, usdtExcess);

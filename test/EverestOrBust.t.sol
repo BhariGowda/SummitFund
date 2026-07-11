@@ -613,3 +613,57 @@ contract EverestOrBustBranchGuardsTest is Test {
         }
     }
 }
+
+/// @dev Security test for double redemption protection in redeemExcess()
+contract EverestOrBustDoubleRedemptionTest is Test {
+    EverestOrBust campaign;
+    MockERC20 usdc;
+    MockERC20 usdt;
+    MockERC20 dai;
+
+    address creator = makeAddr("creator");
+    address alice   = makeAddr("alice");
+
+    uint256 constant START    = 1765324800;
+    uint256 constant DEADLINE = START + 69 days;
+
+    function setUp() public {
+        usdc = new MockERC20();
+        usdt = new MockERC20();
+        dai  = new MockERC20();
+        usdc.setDecimals(6);
+        usdt.setDecimals(6);
+        campaign = new EverestOrBust(creator, address(usdc), address(usdt), address(dai), START);
+        vm.warp(START);
+        usdc.mint(alice, 1000e6);
+    }
+
+    function test_RevertWhen_DoubleRedeemExcess() public {
+        // fill goal + alice contributes extra
+        uint256 needed = 10_000;
+        for (uint256 i = 0; i < needed; i++) {
+            address contributor = address(uint160(0x4000 + i));
+            usdc.mint(contributor, 6.9e6);
+            vm.startPrank(contributor);
+            usdc.approve(address(campaign), 6.9e6);
+            campaign.contribute(address(usdc), 6.9e6);
+            vm.stopPrank();
+        }
+        // alice contributes on top — creating excess
+        vm.startPrank(alice);
+        usdc.approve(address(campaign), 6.9e6);
+        campaign.contribute(address(usdc), 6.9e6);
+        vm.stopPrank();
+
+        vm.warp(DEADLINE + 1);
+
+        // first redemption should succeed
+        vm.prank(alice);
+        campaign.redeemExcess();
+
+        // second redemption should revert — contributedNormalized is now 0
+        vm.prank(alice);
+        vm.expectRevert(EverestOrBust.NothingToRedeem.selector);
+        campaign.redeemExcess();
+    }
+}
