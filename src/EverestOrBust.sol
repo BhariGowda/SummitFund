@@ -137,14 +137,14 @@ contract EverestOrBust {
             amount = _denormalize(token, normalized);
         }
 
-        _pullToken(token, msg.sender, address(this), amount);
-
         contributedNormalized[msg.sender] += normalized;
         totalRaisedNormalized += normalized;
 
         if (token == USDC) contributedUSDC[msg.sender] += amount;
         else if (token == USDT) contributedUSDT[msg.sender] += amount;
         else contributedDAI[msg.sender] += amount;
+        // Interaction
+        _pullToken(token, msg.sender, address(this), amount);
 
         emit Contributed(msg.sender, token, amount, normalized);
     }
