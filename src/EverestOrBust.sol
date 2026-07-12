@@ -94,6 +94,9 @@ contract EverestOrBust {
 
     bool public withdrawn;
 
+    /// @notice Total number of unique addresses that have contributed
+    uint256 public contributorCount;
+
     /*//////////////////////////////////////////////////////////////
                               CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
@@ -139,6 +142,7 @@ contract EverestOrBust {
             amount = _denormalize(token, normalized);
         }
 
+        if (contributedNormalized[msg.sender] == 0) contributorCount++;
         contributedNormalized[msg.sender] += normalized;
         totalRaisedNormalized += normalized;
 

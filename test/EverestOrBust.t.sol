@@ -776,3 +776,66 @@ contract EverestOrBustViewFunctionsTest is Test {
         assertEq(campaign.getCampaignStatus(), 2);
     }
 }
+
+/// @dev Tests for contributorCount tracking
+contract EverestOrBustContributorCountTest is Test {
+    EverestOrBust campaign;
+    MockERC20 usdc;
+    MockERC20 usdt;
+    MockERC20 dai;
+
+    address creator = makeAddr("creator");
+    address alice   = makeAddr("alice");
+    address bob     = makeAddr("bob");
+
+    uint256 constant START = 1765324800;
+
+    function setUp() public {
+        usdc = new MockERC20();
+        usdt = new MockERC20();
+        dai  = new MockERC20();
+        usdc.setDecimals(6);
+        usdt.setDecimals(6);
+        campaign = new EverestOrBust(creator, address(usdc), address(usdt), address(dai), START);
+        vm.warp(START);
+        usdc.mint(alice, 1000e6);
+        usdc.mint(bob, 1000e6);
+    }
+
+    function test_ContributorCount_ZeroInitially() public view {
+        assertEq(campaign.contributorCount(), 0);
+    }
+
+    function test_ContributorCount_IncrementsOnFirstContribution() public {
+        vm.startPrank(alice);
+        usdc.approve(address(campaign), 6.9e6);
+        campaign.contribute(address(usdc), 6.9e6);
+        vm.stopPrank();
+        assertEq(campaign.contributorCount(), 1);
+    }
+
+    function test_ContributorCount_DoesNotDoubleCountSameAddress() public {
+        vm.startPrank(alice);
+        usdc.approve(address(campaign), 6.9e6);
+        campaign.contribute(address(usdc), 3e6);
+        // second contribution from same address should not increment count again
+        usdc.approve(address(campaign), 3.9e6);
+        campaign.contribute(address(usdc), 3.9e6);
+        vm.stopPrank();
+        assertEq(campaign.contributorCount(), 1);
+    }
+
+    function test_ContributorCount_TracksMultipleUniqueAddresses() public {
+        vm.startPrank(alice);
+        usdc.approve(address(campaign), 6.9e6);
+        campaign.contribute(address(usdc), 6.9e6);
+        vm.stopPrank();
+
+        vm.startPrank(bob);
+        usdc.approve(address(campaign), 6.9e6);
+        campaign.contribute(address(usdc), 6.9e6);
+        vm.stopPrank();
+
+        assertEq(campaign.contributorCount(), 2);
+    }
+}
