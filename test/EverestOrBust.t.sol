@@ -667,3 +667,38 @@ contract EverestOrBustDoubleRedemptionTest is Test {
         campaign.redeemExcess();
     }
 }
+
+/// @dev Constructor validation tests
+contract EverestOrBustConstructorGuardsTest is Test {
+    MockERC20 usdc;
+    MockERC20 usdt;
+    MockERC20 dai;
+
+    function setUp() public {
+        usdc = new MockERC20();
+        usdt = new MockERC20();
+        dai  = new MockERC20();
+        usdc.setDecimals(6);
+        usdt.setDecimals(6);
+    }
+
+    function test_RevertWhen_ZeroCreator() public {
+        vm.expectRevert(EverestOrBust.NotCreator.selector);
+        new EverestOrBust(address(0), address(usdc), address(usdt), address(dai), block.timestamp + 1);
+    }
+
+    function test_RevertWhen_ZeroUSDC() public {
+        vm.expectRevert(EverestOrBust.UnsupportedToken.selector);
+        new EverestOrBust(address(this), address(0), address(usdt), address(dai), block.timestamp + 1);
+    }
+
+    function test_RevertWhen_ZeroUSDT() public {
+        vm.expectRevert(EverestOrBust.UnsupportedToken.selector);
+        new EverestOrBust(address(this), address(usdc), address(0), address(dai), block.timestamp + 1);
+    }
+
+    function test_RevertWhen_ZeroDAI() public {
+        vm.expectRevert(EverestOrBust.UnsupportedToken.selector);
+        new EverestOrBust(address(this), address(usdc), address(usdt), address(0), block.timestamp + 1);
+    }
+}

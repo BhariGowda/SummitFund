@@ -104,6 +104,8 @@ contract EverestOrBust {
     /// @param _dai     DAI token address
     /// @param _start   Campaign start timestamp (Dec 10 2026 = 1765324800)
     constructor(address _creator, address _usdc, address _usdt, address _dai, uint256 _start) {
+        if (_creator == address(0)) revert NotCreator();
+        if (_usdc == address(0) || _usdt == address(0) || _dai == address(0)) revert UnsupportedToken();
         creator = _creator;
         USDC = _usdc;
         USDT = _usdt;
@@ -118,7 +120,7 @@ contract EverestOrBust {
 
     /// @notice Contribute `amount` of `token` to the campaign.
     /// @dev Caller must approve this contract first.
-    ///      Excess above the $69 per-address cap is automatically rejected —
+    ///      Excess above the $6.9 per-address cap is automatically rejected —
     ///      only the capped amount is pulled.
     /// @param token  USDC, USDT, or DAI address
     /// @param amount Amount in the token's native decimals
