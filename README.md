@@ -8,7 +8,7 @@ In 2027 I'm attempting to summit Mount Everest. The goal is $69,000. No bank, no
 
 This protocol is what makes that possible. It started as a single `Crowdfund.sol` for the EverestOrBust campaign. It grew into a full protocol suite with a factory, milestone-based fund releases, and contribution-weighted governance over fund disbursement.
 
-[Follow the climb →](https://twitter.com/BhariGowda)
+[Follow the climb →](https://twitter.com/gowdabhari)
 
 ## Protocol
 
