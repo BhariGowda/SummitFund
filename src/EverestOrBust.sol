@@ -265,6 +265,25 @@ contract EverestOrBust {
         return CAP_PER_ADDRESS - contrib;
     }
 
+    /// @notice Current pool balance per token, for frontend display.
+    /// @return usdcBal Current USDC balance held by this contract
+    /// @return usdtBal Current USDT balance held by this contract
+    /// @return daiBal  Current DAI balance held by this contract
+    function getPoolBreakdown() external view returns (uint256 usdcBal, uint256 usdtBal, uint256 daiBal) {
+        usdcBal = IERC20(USDC).balanceOf(address(this));
+        usdtBal = IERC20(USDT).balanceOf(address(this));
+        daiBal = IERC20(DAI).balanceOf(address(this));
+    }
+
+    /// @notice Campaign lifecycle status, so frontends don't need to replicate this logic.
+    /// @return status 0 = not started, 1 = active, 2 = ended, goal reached; 3 = ended, goal not reached
+    function getCampaignStatus() external view returns (uint8 status) {
+        if (block.timestamp < start) return 0;
+        if (block.timestamp <= deadline) return 1;
+        if (totalRaisedNormalized >= GOAL) return 2;
+        return 3;
+    }
+
     /*//////////////////////////////////////////////////////////////
                            INTERNAL HELPERS
     //////////////////////////////////////////////////////////////*/

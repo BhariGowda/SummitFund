@@ -702,3 +702,77 @@ contract EverestOrBustConstructorGuardsTest is Test {
         new EverestOrBust(address(this), address(usdc), address(usdt), address(0), block.timestamp + 1);
     }
 }
+
+/// @dev Tests for frontend-facing view functions added for dApp integration
+contract EverestOrBustViewFunctionsTest is Test {
+    EverestOrBust campaign;
+    MockERC20 usdc;
+    MockERC20 usdt;
+    MockERC20 dai;
+
+    address creator = makeAddr("creator");
+    address alice   = makeAddr("alice");
+
+    uint256 constant START    = 1765324800;
+    uint256 constant DEADLINE = START + 69 days;
+
+    function setUp() public {
+        usdc = new MockERC20();
+        usdt = new MockERC20();
+        dai  = new MockERC20();
+        usdc.setDecimals(6);
+        usdt.setDecimals(6);
+        campaign = new EverestOrBust(creator, address(usdc), address(usdt), address(dai), START);
+        usdc.mint(alice, 1000e6);
+    }
+
+    function test_GetPoolBreakdown_ZeroBeforeAnyContribution() public view {
+        (uint256 usdcBal, uint256 usdtBal, uint256 daiBal) = campaign.getPoolBreakdown();
+        assertEq(usdcBal, 0);
+        assertEq(usdtBal, 0);
+        assertEq(daiBal, 0);
+    }
+
+    function test_GetPoolBreakdown_ReflectsContributions() public {
+        vm.warp(START);
+        vm.startPrank(alice);
+        usdc.approve(address(campaign), 6.9e6);
+        campaign.contribute(address(usdc), 6.9e6);
+        vm.stopPrank();
+
+        (uint256 usdcBal, uint256 usdtBal, uint256 daiBal) = campaign.getPoolBreakdown();
+        assertEq(usdcBal, 6.9e6);
+        assertEq(usdtBal, 0);
+        assertEq(daiBal, 0);
+    }
+
+    function test_GetCampaignStatus_NotStarted() public {
+        vm.warp(START - 1);
+        assertEq(campaign.getCampaignStatus(), 0);
+    }
+
+    function test_GetCampaignStatus_Active() public {
+        vm.warp(START);
+        assertEq(campaign.getCampaignStatus(), 1);
+    }
+
+    function test_GetCampaignStatus_EndedGoalNotReached() public {
+        vm.warp(DEADLINE + 1);
+        assertEq(campaign.getCampaignStatus(), 3);
+    }
+
+    function test_GetCampaignStatus_EndedGoalReached() public {
+        vm.warp(START);
+        uint256 needed = 10_000;
+        for (uint256 i = 0; i < needed; i++) {
+            address contributor = address(uint160(0x5000 + i));
+            usdc.mint(contributor, 6.9e6);
+            vm.startPrank(contributor);
+            usdc.approve(address(campaign), 6.9e6);
+            campaign.contribute(address(usdc), 6.9e6);
+            vm.stopPrank();
+        }
+        vm.warp(DEADLINE + 1);
+        assertEq(campaign.getCampaignStatus(), 2);
+    }
+}
