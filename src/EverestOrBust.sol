@@ -66,6 +66,8 @@ contract EverestOrBust {
     event Contributed(address indexed contributor, address indexed token, uint256 amount, uint256 normalized);
     event Withdrawn(address indexed creator, uint256 usdc, uint256 usdt, uint256 dai);
     event Refunded(address indexed contributor, uint256 usdc, uint256 usdt, uint256 dai);
+    event TransferStuck(address indexed to, address indexed token, uint256 amount);
+    event StuckClaimed(address indexed to, address indexed token, uint256 amount);
 
     /*//////////////////////////////////////////////////////////////
                             STATE VARIABLES
@@ -96,6 +98,10 @@ contract EverestOrBust {
     /// @dev Intentionally NOT decremented on refund — this tracks historical
     ///      participation ("X people believed in this"), not current pool membership.
     uint256 public contributorCount;
+
+    /// @notice Amount of a given token stuck for a given address due to a failed
+    ///         transfer (e.g. USDC/USDT compliance blacklist). Reclaimable via claimStuck().
+    mapping(address => mapping(address => uint256)) public stuckBalance;
 
     /*//////////////////////////////////////////////////////////////
                               CONSTRUCTOR
@@ -172,9 +178,11 @@ contract EverestOrBust {
         uint256 usdtBal = IERC20(USDT).balanceOf(address(this));
         uint256 daiBal = IERC20(DAI).balanceOf(address(this));
 
-        if (usdcBal > 0) _sendToken(USDC, creator, usdcBal);
-        if (usdtBal > 0) _sendToken(USDT, creator, usdtBal);
-        if (daiBal > 0) _sendToken(DAI, creator, daiBal);
+        // Each token transfer is isolated so a single blacklisted/frozen token
+        // (e.g. USDC/USDT compliance freeze) cannot trap funds in the other two.
+        if (usdcBal > 0) _trySendToken(USDC, creator, usdcBal);
+        if (usdtBal > 0) _trySendToken(USDT, creator, usdtBal);
+        if (daiBal > 0) _trySendToken(DAI, creator, daiBal);
 
         emit Withdrawn(creator, usdcBal, usdtBal, daiBal);
     }
@@ -200,9 +208,11 @@ contract EverestOrBust {
         contributedNormalized[msg.sender] = 0;
         totalRaisedNormalized -= normalizedAmt;
 
-        if (usdcAmt > 0) _sendToken(USDC, msg.sender, usdcAmt);
-        if (usdtAmt > 0) _sendToken(USDT, msg.sender, usdtAmt);
-        if (daiAmt > 0) _sendToken(DAI, msg.sender, daiAmt);
+        // Each token transfer is isolated so a single blacklisted/frozen token
+        // cannot trap the contributor's refund in the other two tokens.
+        if (usdcAmt > 0) _trySendToken(USDC, msg.sender, usdcAmt);
+        if (usdtAmt > 0) _trySendToken(USDT, msg.sender, usdtAmt);
+        if (daiAmt > 0) _trySendToken(DAI, msg.sender, daiAmt);
         emit Refunded(msg.sender, usdcAmt, usdtAmt, daiAmt);
     }
 
@@ -247,6 +257,17 @@ contract EverestOrBust {
         return 3;
     }
 
+    /// @notice Reclaim a token transfer that previously failed (e.g. blacklisted by USDC/USDT).
+    /// @param to    The address whose stuck balance is being claimed
+    /// @param token USDC, USDT, or DAI
+    function claimStuck(address to, address token) external nonReentrant {
+        uint256 amount = stuckBalance[to][token];
+        if (amount == 0) revert NothingToRefund();
+        stuckBalance[to][token] = 0;
+        _sendToken(token, to, amount);
+        emit StuckClaimed(to, token, amount);
+    }
+
     /*//////////////////////////////////////////////////////////////
                            INTERNAL HELPERS
     //////////////////////////////////////////////////////////////*/
@@ -275,5 +296,20 @@ contract EverestOrBust {
             abi.encodeWithSelector(IERC20.transfer.selector, to, amount)
         );
         if (!ok || (ret.length != 0 && !abi.decode(ret, (bool)))) revert TokenTransferFailed();
+    }
+
+    /// @dev Attempts a token transfer without reverting on failure. If the transfer
+    ///      fails (e.g. `to` is blacklisted by USDC/USDT compliance controls), the
+    ///      amount is recorded in `stuckBalance` instead of being lost, so it can be
+    ///      reclaimed later via `claimStuck()` once the underlying issue is resolved.
+    function _trySendToken(address token, address to, uint256 amount) internal {
+        (bool ok, bytes memory ret) = token.call(
+            abi.encodeWithSelector(IERC20.transfer.selector, to, amount)
+        );
+        bool success = ok && (ret.length == 0 || abi.decode(ret, (bool)));
+        if (!success) {
+            stuckBalance[to][token] += amount;
+            emit TransferStuck(to, token, amount);
+        }
     }
 }

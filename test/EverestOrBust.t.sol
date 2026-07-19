@@ -715,3 +715,128 @@ contract EverestOrBustContributorCountTest is Test {
         assertEq(campaign.contributorCount(), 2);
     }
 }
+
+/// @dev Mock token that can "blacklist" an address, simulating USDC/USDT compliance freezes
+contract BlacklistableERC20 {
+    mapping(address => uint256) public balanceOf;
+    mapping(address => mapping(address => uint256)) public allowance;
+    mapping(address => bool) public blacklisted;
+
+    function mint(address to, uint256 amount) external {
+        balanceOf[to] += amount;
+    }
+
+    function setBlacklisted(address account, bool status) external {
+        blacklisted[account] = status;
+    }
+
+    function approve(address spender, uint256 amount) external returns (bool) {
+        allowance[msg.sender][spender] = amount;
+        return true;
+    }
+
+    function transfer(address to, uint256 amount) external returns (bool) {
+        if (blacklisted[to] || blacklisted[msg.sender]) return false;
+        balanceOf[msg.sender] -= amount;
+        balanceOf[to] += amount;
+        return true;
+    }
+
+    function transferFrom(address from, address to, uint256 amount) external returns (bool) {
+        if (blacklisted[to] || blacklisted[from]) return false;
+        allowance[from][msg.sender] -= amount;
+        balanceOf[from] -= amount;
+        balanceOf[to] += amount;
+        return true;
+    }
+}
+
+/// @dev Real-world regression test: a contributor blacklisted on one token
+/// (e.g. by USDC/USDT compliance) must not lose their refund on the OTHER tokens too.
+contract EverestOrBustBlacklistResilienceTest is Test {
+    EverestOrBust campaign;
+    BlacklistableERC20 usdc;
+    MockERC20 usdt;
+    MockERC20 dai;
+
+    address creator = makeAddr("creator");
+    address applyMe = makeAddr("applyMe");
+
+    uint256 constant START    = 1765324800;
+    uint256 constant DEADLINE = START + 69 days;
+
+    function setUp() public {
+        usdc = new BlacklistableERC20();
+        usdt = new MockERC20();
+        dai  = new MockERC20();
+        usdt.setDecimals(6);
+
+        campaign = new EverestOrBust(creator, address(usdc), address(usdt), address(dai), START);
+        vm.warp(START);
+
+        usdc.mint(applyMe, 3e6);
+        usdt.mint(applyMe, 2e6);
+        dai.mint(applyMe, 1.9e18);
+    }
+
+    function test_RefundStillPaysOutUnblockedTokensWhenOneIsBlacklisted() public {
+        // applyMe contributes across all three tokens
+        vm.startPrank(applyMe);
+        usdc.approve(address(campaign), 3e6);
+        campaign.contribute(address(usdc), 3e6);
+        usdt.approve(address(campaign), 2e6);
+        campaign.contribute(address(usdt), 2e6);
+        dai.approve(address(campaign), 1.9e18);
+        campaign.contribute(address(dai), 1.9e18);
+        vm.stopPrank();
+
+        // applyMe gets blacklisted on USDC only, AFTER contributing (e.g. flagged mid-campaign)
+        usdc.setBlacklisted(applyMe, true);
+
+        // campaign fails to reach goal — refund window opens
+        vm.warp(DEADLINE + 1);
+
+        uint256 usdtBefore = usdt.balanceOf(applyMe);
+        uint256 daiBefore  = dai.balanceOf(applyMe);
+
+        // refund() must NOT revert just because USDC transfer fails
+        vm.prank(applyMe);
+        campaign.refund();
+
+        // USDT and DAI refunds went through despite the USDC failure
+        assertEq(usdt.balanceOf(applyMe), usdtBefore + 2e6);
+        assertEq(dai.balanceOf(applyMe), daiBefore + 1.9e18);
+
+        // the USDC amount is NOT lost — it's tracked as stuck, claimable later
+        assertEq(campaign.stuckBalance(applyMe, address(usdc)), 3e6);
+    }
+
+    function test_ClaimStuck_RecoversFundsAfterBlacklistLifted() public {
+        vm.startPrank(applyMe);
+        usdc.approve(address(campaign), 3e6);
+        campaign.contribute(address(usdc), 3e6);
+        vm.stopPrank();
+
+        usdc.setBlacklisted(applyMe, true);
+        vm.warp(DEADLINE + 1);
+
+        vm.prank(applyMe);
+        campaign.refund();
+
+        assertEq(campaign.stuckBalance(applyMe, address(usdc)), 3e6);
+
+        // compliance issue resolved — blacklist lifted
+        usdc.setBlacklisted(applyMe, false);
+
+        uint256 balBefore = usdc.balanceOf(applyMe);
+        campaign.claimStuck(applyMe, address(usdc));
+
+        assertEq(usdc.balanceOf(applyMe), balBefore + 3e6);
+        assertEq(campaign.stuckBalance(applyMe, address(usdc)), 0);
+    }
+
+    function test_RevertWhen_ClaimStuckWithNothingOwed() public {
+        vm.expectRevert(EverestOrBust.NothingToRefund.selector);
+        campaign.claimStuck(applyMe, address(usdc));
+    }
+}
