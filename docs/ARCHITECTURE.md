@@ -5,7 +5,7 @@
 - **CrowdFund.sol** — single campaign escrow (ETH or ERC20). All-or-nothing: creator withdraws on success, contributors refund on failure.
 - **CrowdFundFactory.sol** — CREATE2 deployer with predictable addresses and per-creator campaign tracking.
 - **MilestoneCrowdFund.sol** — milestone-based fund release with contribution-weighted voting. Rejected milestones trigger pro-rata refunds.
-- **EverestOrBust.sol** — the actual Everest 2027 fundraise contract. Multi-stablecoin (USDC/USDT/DAI), $69 per-address cap, $69,000 goal, 69-day campaign. No price oracle — stablecoins only. Pro-rata excess redemption if overfunded.
+- **EverestOrBust.sol** — the actual Everest 2027 fundraise contract. Multi-stablecoin (USDC/USDT/DAI), $6.9 per-address cap, $69,000 goal (10,000 contributors), 69-day campaign starting Dec 10 2026. No price oracle — stablecoins only. Contributions close automatically once the goal is reached — no overfunding, no excess redemption needed.
 
 ## Design Patterns
 
