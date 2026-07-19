@@ -300,61 +300,6 @@ contract EverestOrBustTest is Test {
     }
 
     /*//////////////////////////////////////////////////////////////
-                      REDEEM EXCESS TESTS
-    //////////////////////////////////////////////////////////////*/
-
-    function test_RedeemExcess_AfterOverfunding() public {
-        // fill to exactly $69,000
-        _fillGoal();
-        // alice contributes $69 more on top
-        vm.startPrank(alice);
-        usdc.approve(address(campaign), 6.9e6);
-        campaign.contribute(address(usdc), 6.9e6);
-        vm.stopPrank();
-
-        vm.warp(DEADLINE + 1);
-
-        uint256 balBefore = usdc.balanceOf(alice);
-        vm.prank(alice);
-        campaign.redeemExcess();
-
-        // alice should receive some excess back
-        assertGt(usdc.balanceOf(alice), balBefore);
-    }
-
-    function test_RevertWhen_RedeemExcessBeforeDeadline() public {
-        _fillGoal();
-        vm.startPrank(alice);
-        usdc.approve(address(campaign), 6.9e6);
-        campaign.contribute(address(usdc), 6.9e6);
-        vm.stopPrank();
-
-        vm.prank(alice);
-        vm.expectRevert(EverestOrBust.CampaignNotEnded.selector);
-        campaign.redeemExcess();
-    }
-
-    function test_RevertWhen_RedeemExcessGoalNotExceeded() public {
-        vm.warp(DEADLINE + 1);
-        vm.prank(alice);
-        vm.expectRevert(EverestOrBust.NothingToRedeem.selector);
-        campaign.redeemExcess();
-    }
-
-    function test_RevertWhen_RedeemExcessNoContribution() public {
-        _fillGoal();
-        vm.startPrank(alice);
-        usdc.approve(address(campaign), 6.9e6);
-        campaign.contribute(address(usdc), 6.9e6);
-        vm.stopPrank();
-
-        vm.warp(DEADLINE + 1);
-        vm.prank(carol); // carol never contributed
-        vm.expectRevert(EverestOrBust.NothingToRedeem.selector);
-        campaign.redeemExcess();
-    }
-
-    /*//////////////////////////////////////////////////////////////
                       REENTRANCY GUARD TEST
     //////////////////////////////////////////////////////////////*/
 
@@ -402,21 +347,6 @@ contract EverestOrBustTest is Test {
         vm.prank(alice);
         badCampaign.refund();
         assertGt(usdc.balanceOf(alice), balBefore);
-    }
-
-    /*//////////////////////////////////////////////////////////////
-                  ZERO EXCESS NORMALIZED EDGE CASE
-    //////////////////////////////////////////////////////////////*/
-
-    function test_RevertWhen_RedeemExcessRoundsToZero() public {
-        // Fill goal exactly — no excess
-        _fillGoal();
-        vm.warp(DEADLINE + 1);
-
-        // alice contributed nothing — her pro-rata excess would be zero
-        vm.prank(alice);
-        vm.expectRevert(EverestOrBust.NothingToRedeem.selector);
-        campaign.redeemExcess();
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -611,60 +541,6 @@ contract EverestOrBustBranchGuardsTest is Test {
             campaign.contribute(address(usdc), 6.9e6);
             vm.stopPrank();
         }
-    }
-}
-
-/// @dev Security test for double redemption protection in redeemExcess()
-contract EverestOrBustDoubleRedemptionTest is Test {
-    EverestOrBust campaign;
-    MockERC20 usdc;
-    MockERC20 usdt;
-    MockERC20 dai;
-
-    address creator = makeAddr("creator");
-    address alice   = makeAddr("alice");
-
-    uint256 constant START    = 1765324800;
-    uint256 constant DEADLINE = START + 69 days;
-
-    function setUp() public {
-        usdc = new MockERC20();
-        usdt = new MockERC20();
-        dai  = new MockERC20();
-        usdc.setDecimals(6);
-        usdt.setDecimals(6);
-        campaign = new EverestOrBust(creator, address(usdc), address(usdt), address(dai), START);
-        vm.warp(START);
-        usdc.mint(alice, 1000e6);
-    }
-
-    function test_RevertWhen_DoubleRedeemExcess() public {
-        // fill goal + alice contributes extra
-        uint256 needed = 10_000;
-        for (uint256 i = 0; i < needed; i++) {
-            address contributor = address(uint160(0x4000 + i));
-            usdc.mint(contributor, 6.9e6);
-            vm.startPrank(contributor);
-            usdc.approve(address(campaign), 6.9e6);
-            campaign.contribute(address(usdc), 6.9e6);
-            vm.stopPrank();
-        }
-        // alice contributes on top — creating excess
-        vm.startPrank(alice);
-        usdc.approve(address(campaign), 6.9e6);
-        campaign.contribute(address(usdc), 6.9e6);
-        vm.stopPrank();
-
-        vm.warp(DEADLINE + 1);
-
-        // first redemption should succeed
-        vm.prank(alice);
-        campaign.redeemExcess();
-
-        // second redemption should revert — contributedNormalized is now 0
-        vm.prank(alice);
-        vm.expectRevert(EverestOrBust.NothingToRedeem.selector);
-        campaign.redeemExcess();
     }
 }
 

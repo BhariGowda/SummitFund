@@ -57,7 +57,6 @@ contract EverestOrBust {
     error ZeroAmount();
     error CapExceeded();
     error NothingToRefund();
-    error NothingToRedeem();
     error TokenTransferFailed();
 
     /*//////////////////////////////////////////////////////////////
@@ -67,7 +66,6 @@ contract EverestOrBust {
     event Contributed(address indexed contributor, address indexed token, uint256 amount, uint256 normalized);
     event Withdrawn(address indexed creator, uint256 usdc, uint256 usdt, uint256 dai);
     event Refunded(address indexed contributor, uint256 usdc, uint256 usdt, uint256 dai);
-    event ExcessRedeemed(address indexed contributor, uint256 usdc, uint256 usdt, uint256 dai);
 
     /*//////////////////////////////////////////////////////////////
                             STATE VARIABLES
@@ -94,7 +92,9 @@ contract EverestOrBust {
 
     bool public withdrawn;
 
-    /// @notice Total number of unique addresses that have contributed
+    /// @notice Total number of unique addresses that have ever contributed.
+    /// @dev Intentionally NOT decremented on refund — this tracks historical
+    ///      participation ("X people believed in this"), not current pool membership.
     uint256 public contributorCount;
 
     /*//////////////////////////////////////////////////////////////
@@ -132,6 +132,7 @@ contract EverestOrBust {
         if (block.timestamp > deadline) revert CampaignEnded();
         if (amount == 0) revert ZeroAmount();
         if (contributedNormalized[msg.sender] >= CAP_PER_ADDRESS) revert CapExceeded();
+        if (totalRaisedNormalized >= GOAL) revert GoalReached();
 
         uint256 normalized = _normalize(token, amount);
         uint256 remaining = CAP_PER_ADDRESS - contributedNormalized[msg.sender];
@@ -202,49 +203,7 @@ contract EverestOrBust {
         if (usdcAmt > 0) _sendToken(USDC, msg.sender, usdcAmt);
         if (usdtAmt > 0) _sendToken(USDT, msg.sender, usdtAmt);
         if (daiAmt > 0) _sendToken(DAI, msg.sender, daiAmt);
-
         emit Refunded(msg.sender, usdcAmt, usdtAmt, daiAmt);
-    }
-
-    /*//////////////////////////////////////////////////////////////
-                          EXCESS REDEMPTION
-    //////////////////////////////////////////////////////////////*/
-
-    /// @notice Redeem pro-rata share of excess if campaign was overfunded.
-    /// @dev Pro-rata excess is computed per-token based on each token's share
-    ///      of the total contract balance relative to the contributor's normalized share.
-    function redeemExcess() external nonReentrant {
-        if (block.timestamp <= deadline) revert CampaignNotEnded();
-        if (totalRaisedNormalized <= GOAL) revert NothingToRedeem();
-
-        uint256 myContrib = contributedNormalized[msg.sender];
-        if (myContrib == 0) revert NothingToRedeem();
-
-        uint256 excessNormalized = totalRaisedNormalized - GOAL;
-        uint256 myExcessNormalized = (myContrib * excessNormalized) / totalRaisedNormalized;
-        if (myExcessNormalized == 0) revert NothingToRedeem();
-
-        // distribute excess proportionally across token balances
-        uint256 usdcBal = IERC20(USDC).balanceOf(address(this));
-        uint256 usdtBal = IERC20(USDT).balanceOf(address(this));
-        uint256 daiBal = IERC20(DAI).balanceOf(address(this));
-
-        // total contract balance in normalized units
-        uint256 totalBalNormalized = (usdcBal * SCALE_6) + (usdtBal * SCALE_6) + daiBal;
-
-        uint256 usdcExcess = totalBalNormalized > 0 ? (usdcBal * myExcessNormalized) / totalBalNormalized : 0;
-        uint256 usdtExcess = totalBalNormalized > 0 ? (usdtBal * myExcessNormalized) / totalBalNormalized : 0;
-        uint256 daiExcess  = totalBalNormalized > 0 ? (daiBal  * myExcessNormalized) / totalBalNormalized : 0;
-
-        // zero out contributor's normalized balance and reduce total to prevent double redemption
-        contributedNormalized[msg.sender] = 0;
-        totalRaisedNormalized -= myExcessNormalized;
-
-        if (usdcExcess > 0) _sendToken(USDC, msg.sender, usdcExcess);
-        if (usdtExcess > 0) _sendToken(USDT, msg.sender, usdtExcess);
-        if (daiExcess > 0)  _sendToken(DAI,  msg.sender, daiExcess);
-
-        emit ExcessRedeemed(msg.sender, usdcExcess, usdtExcess, daiExcess);
     }
 
     /*//////////////////////////////////////////////////////////////
