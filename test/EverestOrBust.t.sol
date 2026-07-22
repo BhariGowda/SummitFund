@@ -866,3 +866,137 @@ contract EverestOrBustBlacklistResilienceTest is Test {
         assertEq(campaign.stuckBalance(applyMe, address(usdc)), 3e6);
     }
 }
+
+/// @dev Boundary timestamp tests: exact start/deadline second behavior for
+/// contribute(), refund(), and withdraw(). Confirms the </<= split is intentional
+/// and correct, not an off-by-one.
+contract EverestOrBustBoundaryTimestampTest is Test {
+    EverestOrBust campaign;
+    MockERC20 usdc;
+    MockERC20 usdt;
+    MockERC20 dai;
+
+    address campaignCreator = makeAddr("campaignCreator");
+    address contributor     = makeAddr("contributor");
+
+    uint256 constant START    = 1765324800;
+    uint256 constant DEADLINE = START + 69 days;
+
+    function setUp() public {
+        usdc = new MockERC20();
+        usdt = new MockERC20();
+        dai  = new MockERC20();
+        usdc.setDecimals(6);
+        usdt.setDecimals(6);
+        campaign = new EverestOrBust(campaignCreator, address(usdc), address(usdt), address(dai), START);
+        usdc.mint(contributor, 100e6);
+    }
+
+    /// @dev contribute() at exactly `start` must succeed (start is inclusive)
+    function test_Contribute_SucceedsAtExactStart() public {
+        vm.warp(START);
+        vm.startPrank(contributor);
+        usdc.approve(address(campaign), 6.9e6);
+        campaign.contribute(address(usdc), 6.9e6);
+        vm.stopPrank();
+        assertEq(campaign.contributedUSDC(contributor), 6.9e6);
+    }
+
+    /// @dev contribute() one second before `start` must revert
+    function test_RevertWhen_ContributeOneSecondBeforeStart() public {
+        vm.warp(START - 1);
+        vm.startPrank(contributor);
+        usdc.approve(address(campaign), 6.9e6);
+        vm.expectRevert(EverestOrBust.CampaignNotStarted.selector);
+        campaign.contribute(address(usdc), 6.9e6);
+        vm.stopPrank();
+    }
+
+    /// @dev contribute() at exactly `deadline` must succeed (deadline is inclusive)
+    function test_Contribute_SucceedsAtExactDeadline() public {
+        vm.warp(DEADLINE);
+        vm.startPrank(contributor);
+        usdc.approve(address(campaign), 6.9e6);
+        campaign.contribute(address(usdc), 6.9e6);
+        vm.stopPrank();
+        assertEq(campaign.contributedUSDC(contributor), 6.9e6);
+    }
+
+    /// @dev contribute() one second after `deadline` must revert
+    function test_RevertWhen_ContributeOneSecondAfterDeadline() public {
+        vm.warp(DEADLINE + 1);
+        vm.startPrank(contributor);
+        usdc.approve(address(campaign), 6.9e6);
+        vm.expectRevert(EverestOrBust.CampaignEnded.selector);
+        campaign.contribute(address(usdc), 6.9e6);
+        vm.stopPrank();
+    }
+
+    /// @dev refund() at exactly `deadline` must revert — campaign has not ended yet
+    /// (refund requires strictly AFTER deadline: block.timestamp <= deadline reverts)
+    function test_RevertWhen_RefundAtExactDeadline() public {
+        vm.warp(START);
+        vm.startPrank(contributor);
+        usdc.approve(address(campaign), 6.9e6);
+        campaign.contribute(address(usdc), 6.9e6);
+        vm.stopPrank();
+
+        vm.warp(DEADLINE);
+        vm.prank(contributor);
+        vm.expectRevert(EverestOrBust.CampaignNotEnded.selector);
+        campaign.refund();
+    }
+
+    /// @dev refund() one second after deadline must succeed (if goal not met)
+    function test_Refund_SucceedsOneSecondAfterDeadline() public {
+        vm.warp(START);
+        vm.startPrank(contributor);
+        usdc.approve(address(campaign), 6.9e6);
+        campaign.contribute(address(usdc), 6.9e6);
+        vm.stopPrank();
+
+        vm.warp(DEADLINE + 1);
+        uint256 balBefore = usdc.balanceOf(contributor);
+        vm.prank(contributor);
+        campaign.refund();
+        assertEq(usdc.balanceOf(contributor), balBefore + 6.9e6);
+    }
+
+    /// @dev withdraw() at exactly `deadline` must revert — same boundary as refund()
+    function test_RevertWhen_WithdrawAtExactDeadline() public {
+        vm.warp(START);
+        uint256 needed = 10_000;
+        for (uint256 i = 0; i < needed; i++) {
+            address c = address(uint160(0x6000 + i));
+            usdc.mint(c, 6.9e6);
+            vm.startPrank(c);
+            usdc.approve(address(campaign), 6.9e6);
+            campaign.contribute(address(usdc), 6.9e6);
+            vm.stopPrank();
+        }
+
+        vm.warp(DEADLINE);
+        vm.prank(campaignCreator);
+        vm.expectRevert(EverestOrBust.CampaignNotEnded.selector);
+        campaign.withdraw();
+    }
+
+    /// @dev withdraw() one second after deadline must succeed (if goal met)
+    function test_Withdraw_SucceedsOneSecondAfterDeadline() public {
+        vm.warp(START);
+        uint256 needed = 10_000;
+        for (uint256 i = 0; i < needed; i++) {
+            address c = address(uint160(0x7000 + i));
+            usdc.mint(c, 6.9e6);
+            vm.startPrank(c);
+            usdc.approve(address(campaign), 6.9e6);
+            campaign.contribute(address(usdc), 6.9e6);
+            vm.stopPrank();
+        }
+
+        vm.warp(DEADLINE + 1);
+        vm.prank(campaignCreator);
+        campaign.withdraw();
+        assertTrue(campaign.withdrawn());
+    }
+}
