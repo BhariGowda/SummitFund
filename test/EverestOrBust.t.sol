@@ -839,4 +839,30 @@ contract EverestOrBustBlacklistResilienceTest is Test {
         vm.expectRevert(EverestOrBust.NothingToRefund.selector);
         campaign.claimStuck(applyMe, address(usdc));
     }
+
+    /// @dev claimStuck() intentionally reverts (does not re-stuck) if still blacklisted.
+    /// This is correct: unlike refund()/withdraw() which touch three tokens per call and
+    /// must not let one bad token trap the other two, claimStuck() touches exactly one
+    /// token per call. A revert here traps nothing else and gives honest feedback that
+    /// the block is still active, rather than silently swallowing the failure.
+    function test_ClaimStuck_RevertsIfStillBlacklisted_DoesNotSilentlySwallow() public {
+        vm.startPrank(applyMe);
+        usdc.approve(address(campaign), 3e6);
+        campaign.contribute(address(usdc), 3e6);
+        vm.stopPrank();
+
+        usdc.setBlacklisted(applyMe, true);
+        vm.warp(DEADLINE + 1);
+
+        vm.prank(applyMe);
+        campaign.refund();
+        assertEq(campaign.stuckBalance(applyMe, address(usdc)), 3e6);
+
+        // still blacklisted — claimStuck should revert, not silently no-op
+        vm.expectRevert(EverestOrBust.TokenTransferFailed.selector);
+        campaign.claimStuck(applyMe, address(usdc));
+
+        // stuck balance is untouched — nothing was lost by the failed attempt
+        assertEq(campaign.stuckBalance(applyMe, address(usdc)), 3e6);
+    }
 }
