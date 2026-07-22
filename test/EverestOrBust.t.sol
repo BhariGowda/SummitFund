@@ -1000,3 +1000,74 @@ contract EverestOrBustBoundaryTimestampTest is Test {
         assertTrue(campaign.withdrawn());
     }
 }
+
+/// @dev Mock token that burns 10% on every transfer, simulating fee-on-transfer/deflationary behavior
+contract FeeOnTransferERC20Everest {
+    mapping(address => uint256) public balanceOf;
+    mapping(address => mapping(address => uint256)) public allowance;
+
+    function mint(address to, uint256 amount) external {
+        balanceOf[to] += amount;
+    }
+
+    function approve(address spender, uint256 amount) external returns (bool) {
+        allowance[msg.sender][spender] = amount;
+        return true;
+    }
+
+    function transferFrom(address from, address to, uint256 amount) external returns (bool) {
+        allowance[from][msg.sender] -= amount;
+        balanceOf[from] -= amount;
+        uint256 fee = amount / 10; // 10% fee
+        balanceOf[to] += (amount - fee);
+        return true;
+    }
+
+    function transfer(address to, uint256 amount) external returns (bool) {
+        balanceOf[msg.sender] -= amount;
+        uint256 fee = amount / 10;
+        balanceOf[to] += (amount - fee);
+        return true;
+    }
+}
+
+/// @dev Proves contribute() credits the contributor based on tokens ACTUALLY received,
+/// not the amount requested — defends against fee-on-transfer/deflationary tokens.
+contract EverestOrBustFeeOnTransferTest is Test {
+    EverestOrBust campaign;
+    FeeOnTransferERC20Everest feeToken;
+    MockERC20 usdt;
+    MockERC20 dai;
+
+    address campaignCreator = makeAddr("campaignCreator");
+    address contributor     = makeAddr("contributor");
+
+    uint256 constant START = 1765324800;
+
+    function setUp() public {
+        feeToken = new FeeOnTransferERC20Everest();
+        usdt = new MockERC20();
+        dai  = new MockERC20();
+        usdt.setDecimals(6);
+
+        // deploy campaign treating feeToken AS the "USDC" slot to exercise the defense
+        campaign = new EverestOrBust(campaignCreator, address(feeToken), address(usdt), address(dai), START);
+        vm.warp(START);
+
+        feeToken.mint(contributor, 100e6);
+    }
+
+    function test_Contribute_CreditsActualAmountReceived_NotRequestedAmount() public {
+        vm.startPrank(contributor);
+        feeToken.approve(address(campaign), 5e6);
+        // requests 5e6 (under the $6.9 cap so it isn't capped), but 10% fee means
+        // only 4.5e6 actually arrives
+        campaign.contribute(address(feeToken), 5e6);
+        vm.stopPrank();
+
+        // contributor should be credited for 4.5e6 (what arrived), NOT 5e6 (what was requested)
+        assertEq(campaign.contributedUSDC(contributor), 4.5e6);
+        assertEq(feeToken.balanceOf(address(campaign)), 4.5e6);
+        assertEq(campaign.contributedNormalized(contributor), 4.5e18);
+    }
+}

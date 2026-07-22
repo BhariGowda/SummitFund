@@ -149,6 +149,22 @@ contract EverestOrBust {
             amount = _denormalize(token, normalized);
         }
 
+        // Pull tokens BEFORE crediting state, measuring the actual balance delta.
+        // USDC/USDT/DAI do not currently charge transfer fees, but this protects
+        // against any future fee-on-transfer or deflationary behavior so contributor
+        // credit always matches what the contract actually received, not what was
+        // requested. Reentrancy is prevented by nonReentrant, same pattern as
+        // CrowdFund.sol's ERC20 contribution path.
+        uint256 balanceBefore = IERC20(token).balanceOf(address(this));
+        _pullToken(token, msg.sender, address(this), amount);
+        uint256 received = IERC20(token).balanceOf(address(this)) - balanceBefore;
+        if (received == 0) revert ZeroAmount();
+        if (received != amount) {
+            amount = received;
+            normalized = _normalize(token, amount);
+            if (normalized > remaining) normalized = remaining;
+        }
+
         if (contributedNormalized[msg.sender] == 0) contributorCount++;
         contributedNormalized[msg.sender] += normalized;
         totalRaisedNormalized += normalized;
@@ -156,8 +172,6 @@ contract EverestOrBust {
         if (token == USDC) contributedUSDC[msg.sender] += amount;
         else if (token == USDT) contributedUSDT[msg.sender] += amount;
         else contributedDAI[msg.sender] += amount;
-        // Interaction
-        _pullToken(token, msg.sender, address(this), amount);
 
         emit Contributed(msg.sender, token, amount, normalized);
     }
